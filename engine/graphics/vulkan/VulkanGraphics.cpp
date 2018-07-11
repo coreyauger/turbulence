@@ -45,6 +45,7 @@ void trb::grfx::VulkanGraphics::initWindow(int width, int height){
 void trb::grfx::VulkanGraphics::initVulkan(){
     createInstance();
     setupDebugCallback();
+    vulkanDevice.init(instance);
 }
 
 void trb::grfx::VulkanGraphics::createInstance(){

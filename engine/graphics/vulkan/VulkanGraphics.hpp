@@ -13,6 +13,7 @@
 #include <cstdlib>
 #include <algorithm>
 #include <fstream>
+#include "VulkanDevice.hpp"
 #include "../GraphicsInterface.hpp"
 
 namespace trb{
@@ -39,6 +40,7 @@ namespace trb{
                 GLFWwindow* window;                         // TODO: swap this to SDL2
                 vk::Instance instance;    
                 vk::SurfaceKHR surface;                     // our window draw surface.
+                VulkanDevice vulkanDevice;
 
                 VkDebugReportCallbackEXT callback;          // NOTE: could not get c++ syntax to work here.. so using C  
 
