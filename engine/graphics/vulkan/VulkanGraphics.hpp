@@ -14,6 +14,7 @@
 #include <algorithm>
 #include <fstream>
 #include "VulkanDevice.hpp"
+#include "VulkanSwapChain.hpp"
 #include "../GraphicsInterface.hpp"
 
 namespace trb{
@@ -39,8 +40,8 @@ namespace trb{
                 bool enableValidationLayers;
                 GLFWwindow* window;                         // TODO: swap this to SDL2
                 vk::Instance instance;    
-                vk::SurfaceKHR surface;                     // our window draw surface.
                 VulkanDevice vulkanDevice;
+                VulkanSwapChain swapChain;
 
                 VkDebugReportCallbackEXT callback;          // NOTE: could not get c++ syntax to work here.. so using C  
 
@@ -56,7 +57,6 @@ namespace trb{
                 bool checkValidationLayerSupport();                
                 std::vector<const char*> getRequiredExtensions();
                 void setupDebugCallback();
-                void createSurface();
 
 
                 static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugReportFlagsEXT flags, VkDebugReportObjectTypeEXT objType, uint64_t obj, size_t location, int32_t code, const char* layerPrefix, const char* msg, void* userData) {

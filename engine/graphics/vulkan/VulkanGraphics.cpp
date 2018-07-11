@@ -5,6 +5,12 @@
 #include <GLFW/glfw3.h>
 #include "../../LogManager.hpp"
 
+#define VK_USE_PLATFORM_XCB_KHR 1
+
+#if defined(VK_USE_PLATFORM_XCB_KHR)
+#include <xcb/xcb.h>
+#endif
+
 
 //////
 // Validation Layer Callbacks
@@ -124,8 +130,3 @@ std::vector<const char*> trb::grfx::VulkanGraphics::getRequiredExtensions() {
     }
 }
 
-void trb::grfx::VulkanGraphics::createSurface() {
-    if ( (static_cast<vk::Result>(glfwCreateWindowSurface(instance, window, nullptr, reinterpret_cast<VkSurfaceKHR*>(&surface))) ) != vk::Result::eSuccess) {
-        throw std::runtime_error("failed to create window surface!");
-    }
-}
