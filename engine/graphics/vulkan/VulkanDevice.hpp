@@ -11,7 +11,11 @@
 #include <algorithm>
 #include <map>
 
+#include "VulkanBuffer.hpp"
 #include "../GraphicsInterface.hpp"
+
+// Default fence timeout in nanoseconds
+#define DEFAULT_FENCE_TIMEOUT 100000000000
 
 namespace trb{
     namespace grfx{
@@ -29,13 +33,15 @@ namespace trb{
         struct VulkanDevice{ 
             vk::PhysicalDevice physicalDevice;   
             vk::Device device;  
-            vk::PhysicalDeviceProperties deviceProperties;
-            vk::PhysicalDeviceFeatures deviceFeatures;   
+            vk::PhysicalDeviceProperties properties;
+            vk::PhysicalDeviceFeatures features;   
+            vk::PhysicalDeviceMemoryProperties memoryProperties;
             vk::PhysicalDeviceFeatures enabledFeatures;     
             std::vector<vk::QueueFamilyProperties> queueFamilyProperties; 
             QueueFamilyIndices queueFamilyIndices;
-            vk::CommandPool commandPool;
-            vk::SurfaceKHR surface;                     // our window draw surface. TODO: make this SDL2 compatable..
+            std::vector<std::string> supportedExtensions;
+
+            vk::CommandPool commandPool;        
             
             VulkanDevice(){};
             ~VulkanDevice(){
@@ -71,8 +77,20 @@ namespace trb{
                     throw std::runtime_error("failed to find a suitable GPU!");
                 }
 
-                physicalDevice.getFeatures(&deviceFeatures);
-                physicalDevice.getProperties(&deviceProperties);
+                physicalDevice.getFeatures(&features);
+                physicalDevice.getProperties(&properties);
+
+                // Get list of supported extensions
+                uint32_t extCount = 0;
+                physicalDevice.enumerateDeviceExtensionProperties(nullptr, &extCount, nullptr);
+                if (extCount > 0){
+                    std::vector<vk::ExtensionProperties> extensions(extCount);
+                    if (physicalDevice.enumerateDeviceExtensionProperties(nullptr, &extCount, &extensions.front()) == vk::Result::eSuccess){
+                        for (auto ext : extensions){
+                            supportedExtensions.push_back(ext.extensionName);
+                        }
+                    }
+                }
 
                 // Queue family properties, used for setting up requested queues upon device creation
 			    uint32_t queueFamilyCount;
@@ -83,7 +101,7 @@ namespace trb{
 
                 // TODO: pass these requested features in
                 vk::PhysicalDeviceFeatures enabledFeatures;
-                if (deviceFeatures.samplerAnisotropy) {
+                if (features.samplerAnisotropy) {
                     enabledFeatures.samplerAnisotropy = VK_TRUE;
                 }
                 std::vector<const char*> enabledExtensions{};
@@ -94,13 +112,13 @@ namespace trb{
             int rateDeviceSuitability(vk::PhysicalDevice device) {
                 int score = 0;
                 // Discrete GPUs have a significant performance advantage
-                if (deviceProperties.deviceType == vk::PhysicalDeviceType::eDiscreteGpu ) {
+                if (properties.deviceType == vk::PhysicalDeviceType::eDiscreteGpu ) {
                     score += 1000;
                 }
                 // Maximum possible size of textures affects graphics quality
-                score += deviceProperties.limits.maxImageDimension2D;
+                score += properties.limits.maxImageDimension2D;
                 // Application can't function without geometry shaders
-                if (!deviceFeatures.geometryShader) {
+                if (!features.geometryShader) {
                     return 0;
                 }
                 return score;
@@ -125,7 +143,7 @@ namespace trb{
                         indices.graphicsFamily = i;
                     }
                     vk::Bool32 presentSupport = false;
-                    physicalDevice.getSurfaceSupportKHR(i, surface, &presentSupport);
+                    //physicalDevice.getSurfaceSupportKHR(i, surface, &presentSupport);
                     if (queueFamily.queueCount > 0 && presentSupport) {
                         indices.presentFamily = i;
                     }
@@ -136,6 +154,29 @@ namespace trb{
                 }
                 return indices;
             }
+
+
+            uint32_t getMemoryType(uint32_t typeBits, vk::MemoryPropertyFlags properties, vk::Bool32 *memTypeFound = nullptr){
+                for (uint32_t i = 0; i < memoryProperties.memoryTypeCount; i++){
+                    if ((typeBits & 1) == 1){
+                        if ((memoryProperties.memoryTypes[i].propertyFlags & properties) == properties){
+                            if (memTypeFound){
+                                *memTypeFound = true;
+                            }
+                            return i;
+                        }
+                    }
+                    typeBits >>= 1;
+                }
+                if (memTypeFound){
+                    *memTypeFound = false;
+                    return 0;
+                }
+                else{
+                    throw std::runtime_error("Could not find a matching memory type");
+                }
+            }
+
 
             uint32_t getQueueFamilyIndex(vk::QueueFlags queueFlags){
                 // Dedicated queue for compute
@@ -229,7 +270,7 @@ namespace trb{
             }
 
 
-            VkCommandPool createCommandPool(uint32_t queueFamilyIndex, vk::CommandPoolCreateFlags createFlags = vk::CommandPoolCreateFlagBits::eResetCommandBuffer){
+            vk::CommandPool createCommandPool(uint32_t queueFamilyIndex, vk::CommandPoolCreateFlags createFlags = vk::CommandPoolCreateFlagBits::eResetCommandBuffer){
                 vk::CommandPoolCreateInfo cmdPoolInfo = {};
                 cmdPoolInfo.queueFamilyIndex = queueFamilyIndex;
                 cmdPoolInfo.flags = createFlags;
@@ -240,6 +281,169 @@ namespace trb{
                 return cmdPool;
             }
 
+
+            vk::Result createBuffer(vk::BufferUsageFlags usageFlags, vk::MemoryPropertyFlags memoryPropertyFlags, vk::DeviceSize size, vk::Buffer *buffer, vk::DeviceMemory *memory, void *data = nullptr){
+                // Create the buffer handle
+                vk::BufferCreateInfo bufferCreateInfo;
+                bufferCreateInfo.usage = usageFlags;
+                bufferCreateInfo.size = size;
+                bufferCreateInfo.sharingMode = vk::SharingMode::eExclusive;
+                if( device.createBuffer(&bufferCreateInfo, nullptr, buffer) != vk::Result::eSuccess ){
+                    throw std::runtime_error("could not create buffer");
+                }
+                // Create the memory backing up the buffer handle
+                vk::MemoryRequirements memReqs;
+                vk::MemoryAllocateInfo memAlloc;
+                device.getBufferMemoryRequirements(*buffer, &memReqs);
+                memAlloc.allocationSize = memReqs.size;
+                // Find a memory type index that fits the properties of the buffer
+                memAlloc.memoryTypeIndex = getMemoryType(memReqs.memoryTypeBits, memoryPropertyFlags);
+                if( device.allocateMemory(&memAlloc, nullptr, memory) != vk::Result::eSuccess ){
+                    throw std::runtime_error("failed to allocate memory on device");
+                }
+                
+                // If a pointer to the buffer data has been passed, map the buffer and copy over the data
+                if (data != nullptr){
+                    void *mapped;
+                    //mapMemory( DeviceMemory memory, DeviceSize offset, DeviceSize size, MemoryMapFlags flags, void** ppData )
+                    if( device.mapMemory(*memory, (vk::DeviceSize)0, size, (vk::MemoryMapFlags)0, &mapped) != vk::Result::eSuccess ){
+                        throw std::runtime_error("failed to map memory to device");
+                    }
+                    memcpy(mapped, data, size);
+                    // If host coherency hasn't been requested, do a manual flush to make writes visible
+                    if ( !(memoryPropertyFlags & vk::MemoryPropertyFlagBits::eHostCoherent) ){
+                        vk::MappedMemoryRange mappedRange;
+                        mappedRange.memory = *memory;
+                        mappedRange.offset = 0;
+                        mappedRange.size = size;
+                        device.flushMappedMemoryRanges(1, &mappedRange);                        
+                    }
+                    device.unmapMemory(*memory);                    
+                }
+
+                // Attach the memory to the buffer object
+                device.bindBufferMemory(*buffer, *memory, 0);
+                return vk::Result::eSuccess;
+            }
+
+            /**
+            * Create a buffer on the device
+            *
+            * @param usageFlags Usage flag bitmask for the buffer (i.e. index, vertex, uniform buffer)
+            * @param memoryPropertyFlags Memory properties for this buffer (i.e. device local, host visible, coherent)
+            * @param buffer Pointer to a vk::Vulkan buffer object
+            * @param size Size of the buffer in byes
+            * @param data Pointer to the data that should be copied to the buffer after creation (optional, if not set, no data is copied over)
+            *
+            * @return VK_SUCCESS if buffer handle and memory have been created and (optionally passed) data has been copied
+            */
+            vk::Result createBuffer(vk::BufferUsageFlags usageFlags, vk::MemoryPropertyFlags memoryPropertyFlags, Buffer *buffer, vk::DeviceSize size, void *data = nullptr){
+                buffer->device = device;
+
+                // Create the buffer handle
+                vk::BufferCreateInfo bufferCreateInfo;
+                bufferCreateInfo.usage = usageFlags;
+                bufferCreateInfo.size = size;
+                if(device.createBuffer(&bufferCreateInfo, nullptr, &buffer->buffer) != vk::Result::eSuccess ){
+                    throw std::runtime_error("could not create buffer");
+                }
+
+                // Create the memory backing up the buffer handle
+                vk::MemoryRequirements memReqs;
+                vk::MemoryAllocateInfo memAlloc;
+                device.getBufferMemoryRequirements(buffer->buffer, &memReqs);
+                memAlloc.allocationSize = memReqs.size;
+                // Find a memory type index that fits the properties of the buffer
+                memAlloc.memoryTypeIndex = getMemoryType(memReqs.memoryTypeBits, memoryPropertyFlags);
+                if( device.allocateMemory(&memAlloc, nullptr, &buffer->memory) != vk::Result::eSuccess ){
+                    throw std::runtime_error("failed to allocate memory on device");
+                }
+                buffer->alignment = memReqs.alignment;
+                buffer->size = memAlloc.allocationSize;
+                buffer->usageFlags = usageFlags;
+                buffer->memoryPropertyFlags = memoryPropertyFlags;
+
+                // If a pointer to the buffer data has been passed, map the buffer and copy over the data
+                if (data != nullptr){
+                    if(buffer->map() != vk::Result::eSuccess){
+                        throw std::runtime_error("could not map memory");
+                    }
+                    memcpy(buffer->mapped, data, size);
+                    buffer->unmap();
+                }
+                // Initialize a default descriptor that covers the whole buffer size
+                buffer->setupDescriptor();
+                // Attach the memory to the buffer object
+                buffer->bind();
+                return vk::Result::eSuccess;
+            }
+            
+            void copyBuffer(Buffer *src, Buffer *dst, vk::Queue queue, vk::BufferCopy *copyRegion = nullptr){
+                assert(dst->size <= src->size);
+                assert(src->buffer);
+                vk::CommandBuffer copyCmd = createCommandBuffer( vk::CommandBufferLevel::ePrimary, true);
+                vk::BufferCopy bufferCopy;
+                if (copyRegion == nullptr){
+                    bufferCopy.size = src->size;
+                }else{
+                    bufferCopy = *copyRegion;
+                }
+                copyCmd.copyBuffer(src->buffer, dst->buffer, 1, &bufferCopy);
+                
+                flushCommandBuffer(copyCmd, queue);
+            }
+
+            void flushCommandBuffer(vk::CommandBuffer commandBuffer, vk::Queue queue, bool free = true){
+                if (!commandBuffer){
+                    return;
+                }
+                commandBuffer.end();
+                
+                vk::SubmitInfo submitInfo;
+                submitInfo.commandBufferCount = 1;
+                submitInfo.pCommandBuffers = &commandBuffer;
+
+                // Create fence to ensure that the command buffer has finished executing
+                vk::FenceCreateInfo fenceInfo;
+                fenceInfo.flags = (vk::FenceCreateFlags)0;
+                vk::Fence fence;
+                if( device.createFence(&fenceInfo, nullptr, &fence) != vk::Result::eSuccess ){
+                    throw std::runtime_error("failed to create device semephor fence");
+                }                
+                if(queue.submit(1,  &submitInfo, fence) != vk::Result::eSuccess ){
+                    throw std::runtime_error("failed to submit CommandBuffer to queue");
+                }
+                if(device.waitForFences(1, &fence, VK_TRUE, DEFAULT_FENCE_TIMEOUT) != vk::Result::eSuccess ){
+                    throw std::runtime_error("failed to create wait state for Fence");
+                }  
+                device.destroyFence(fence, nullptr);                                    
+                if (free){
+                    device.freeCommandBuffers(commandPool, 1, &commandBuffer);                    
+                }
+            }
+            
+
+            vk::CommandBuffer createCommandBuffer(vk::CommandBufferLevel level, bool begin = false){
+                vk::CommandBufferAllocateInfo cmdBufAllocateInfo; // = vks::initializers::commandBufferAllocateInfo(commandPool, level, 1);
+                cmdBufAllocateInfo.commandPool = commandPool;
+                cmdBufAllocateInfo.level = level;
+                cmdBufAllocateInfo.commandBufferCount = 1;
+
+                vk::CommandBuffer cmdBuffer;
+                if(device.allocateCommandBuffers(&cmdBufAllocateInfo, &cmdBuffer) != vk::Result::eSuccess ) {
+                    throw std::runtime_error("failed to allocate command buffer!");
+                }
+                // If requested, also start recording for the new command buffer
+                if (begin){
+                    vk::CommandBufferBeginInfo cmdBufInfo;
+                    cmdBuffer.begin(cmdBufInfo);                  
+                }
+                return cmdBuffer;
+            }
+
+            bool extensionSupported(std::string extension){
+			    return (std::find(supportedExtensions.begin(), supportedExtensions.end(), extension) != supportedExtensions.end());
+		    }
 
         };
     }

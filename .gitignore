@@ -1,4 +1,5 @@
 .vscode/*
+./turbulence
 
 # Prerequisites
 *.d
