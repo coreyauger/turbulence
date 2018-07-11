@@ -15,50 +15,52 @@
 #include <fstream>
 #include "../GraphicsInterface.hpp"
 
-
-//////
-// Validation Layer Callbacks
-
-VkResult CreateDebugReportCallbackEXT(VkInstance instance, const VkDebugReportCallbackCreateInfoEXT* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkDebugReportCallbackEXT* pCallback) {
-    auto func = (PFN_vkCreateDebugReportCallbackEXT) vkGetInstanceProcAddr(instance, "vkCreateDebugReportCallbackEXT");
-    if (func != nullptr) {
-        return func(instance, pCreateInfo, pAllocator, pCallback);
-    } else {
-        return VK_ERROR_EXTENSION_NOT_PRESENT;
-    }
-}
-
-void DestroyDebugReportCallbackEXT(VkInstance instance, VkDebugReportCallbackEXT callback, const VkAllocationCallbacks* pAllocator) {
-    auto func = (PFN_vkDestroyDebugReportCallbackEXT) vkGetInstanceProcAddr(instance, "vkDestroyDebugReportCallbackEXT");
-    if (func != nullptr) {
-        func(instance, callback, pAllocator);
-    }
-}
-
-// END: Validation Layer Callbacks
-/////
-
 namespace trb{
     namespace grfx{
         
         class VulkanGraphics : public GraphicInterface{            
             public:                                
                 void init(){
-                    initWindow();
+                    // TODO: where do we want to get defualts from?
+                    const int width = 800;
+                    const int height = 600;
+                    initWindow(width, height);
                     initVulkan();
                 }
 
                 static VulkanGraphics* create(bool enableValidationLayers){
-                    VulkanGraphics *graphics = new VulkanGraphics();
+                    VulkanGraphics *graphics = new VulkanGraphics(enableValidationLayers);
                     graphics->init();
                     return graphics;
                 }
 
             private:
-                VulkanGraphics(){}
+                bool enableValidationLayers;
+                GLFWwindow* window;                         // TODO: swap this to SDL2
+                vk::Instance instance;    
+                vk::SurfaceKHR surface;                     // our window draw surface.
 
-                void initWindow();
+                VkDebugReportCallbackEXT callback;          // NOTE: could not get c++ syntax to work here.. so using C  
+
+                VulkanGraphics(bool enableValidationLayers) 
+                    : enableValidationLayers(enableValidationLayers)
+                {}
+
+                void initWindow(int width, int height);
                 void initVulkan();
+
+                // vulkan init functions
+                void createInstance();
+                bool checkValidationLayerSupport();                
+                std::vector<const char*> getRequiredExtensions();
+                void setupDebugCallback();
+                void createSurface();
+
+
+                static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugReportFlagsEXT flags, VkDebugReportObjectTypeEXT objType, uint64_t obj, size_t location, int32_t code, const char* layerPrefix, const char* msg, void* userData) {
+                    std::cerr << "validation layer: " << msg << std::endl;
+                    return VK_FALSE;
+                }
         };
     }
 }

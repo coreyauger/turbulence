@@ -4,12 +4,19 @@
 #include "graphics/GraphicsManager.hpp"
 #include "graphics/vulkan/VulkanGraphics.hpp"
 
+#ifdef NDEBUG
+const bool enableValidationLayers = false;
+#else
+const bool enableValidationLayers = true;
+#endif
+
+
 namespace trb{
 
     class Engine{
         public:
             Engine()
-                : graphics( trb::grfx::VulkanGraphics::create() )
+                : graphics( trb::grfx::VulkanGraphics::create(enableValidationLayers) )
             {};
             ~Engine(){};
 
