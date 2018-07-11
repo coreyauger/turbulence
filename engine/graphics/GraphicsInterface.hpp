@@ -5,7 +5,9 @@ namespace trb{
     namespace grfx{
 
         class GraphicInterface{
-
+            public:
+                virtual const std::string getWindowTitle() const = 0;
+                virtual ~GraphicInterface(){};
         };
     }
 }

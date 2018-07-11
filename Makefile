@@ -1,10 +1,10 @@
-VULKAN_SDK_PATH = /home/suroot/projects/vulkan/1.1.77.0/x86_64
+VULKAN_SDK_PATH = ./libs
 
 CC=g++
 VPATH=engine:engine/graphics:engine/graphics/vulkan/
-INCLUDES=-Iengine -Iengine/graphics -Iengine/graphics/vulkan/
+INCLUDES=-Iexternal/ -Iengine -Iengine/graphics -Iengine/graphics/vulkan/ 
 CFLAGS = -std=c++11 -I$(VULKAN_SDK_PATH)/include $(INCLUDES) -Wall -g
-LDFLAGS = -L$(VULKAN_SDK_PATH)/lib `pkg-config --static --libs glfw3` -lvulkan
+LDFLAGS = -L$(VULKAN_SDK_PATH)/lib -lvulkan -lxcb
 
 EXECUTABLE=turbulence
 OBJ=main.o VulkanGraphics.o

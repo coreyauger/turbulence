@@ -1,9 +1,7 @@
 #ifndef TRB_GFX_VulkanDevice_H_
 #define TRB_GFX_VulkanDevice_H_
 
-#define GLFW_INCLUDE_VULKAN
-#include <vulkan/vulkan.hpp>
-#include <GLFW/glfw3.h>
+#include "vulkan/vulkan.hpp"
 
 #include <iostream>
 #include <stdexcept>
@@ -40,7 +38,7 @@ namespace trb{
             QueueFamilyIndices queueFamilyIndices;
             std::vector<std::string> supportedExtensions;
 
-            vk::CommandPool commandPool;        
+            vk::CommandPool commandPool;      
             
             VulkanDevice(){};
             ~VulkanDevice(){

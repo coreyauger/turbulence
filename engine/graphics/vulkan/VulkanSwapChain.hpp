@@ -3,12 +3,7 @@
 
 #define VK_USE_PLATFORM_XCB_KHR 1
 
-#if defined(VK_USE_PLATFORM_XCB_KHR)
-#include <xcb/xcb.h>
-#include "vulkan_xcb.h"
-#endif
-
-#include <vulkan/vulkan.hpp>
+#include "vulkan/vulkan.hpp"
 #include "VulkanDevice.hpp"
 
 
