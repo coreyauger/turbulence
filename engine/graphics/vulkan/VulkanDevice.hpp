@@ -63,6 +63,7 @@ namespace trb{
                 std::multimap<int, VkPhysicalDevice> candidates;
 
                 for (const auto& device : devices) {
+                    std::cout<< "device: " << std::endl;
                     int score = rateDeviceSuitability(device);
                     candidates.insert(std::make_pair(score, device));
                 }
@@ -108,6 +109,9 @@ namespace trb{
 
             int rateDeviceSuitability(vk::PhysicalDevice device) {
                 int score = 0;
+                device.getProperties(&properties);
+                device.getFeatures(&features);
+
                 // Discrete GPUs have a significant performance advantage
                 if (properties.deviceType == vk::PhysicalDeviceType::eDiscreteGpu ) {
                     score += 1000;

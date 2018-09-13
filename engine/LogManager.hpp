@@ -33,7 +33,7 @@ namespace trb{
             void setLevel( Level level ){ logLevel = level; }
 
             void log(const char* msg, Level level){
-                if( level < logLevel)
+                if( level <= logLevel)
                     std::cout<< msg << std::endl;
             }
     };
