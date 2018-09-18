@@ -64,7 +64,9 @@ namespace trb{
 
                 for (const auto& device : devices) {
                     std::cout<< "device: " << std::endl;
+                    device.getFeatures(&features);
                     int score = rateDeviceSuitability(device);
+                    std::cout << "score " << score << std::endl;
                     candidates.insert(std::make_pair(score, device));
                 }
 
@@ -102,9 +104,11 @@ namespace trb{
                 if (features.samplerAnisotropy) {
                     enabledFeatures.samplerAnisotropy = VK_TRUE;
                 }
+                if (features.geometryShader) {
+                    enabledFeatures.geometryShader = VK_TRUE;
+                }
                 std::vector<const char*> enabledExtensions{};
                 createLogicalDevice(enabledFeatures, enabledExtensions);
-
             }
 
             int rateDeviceSuitability(vk::PhysicalDevice device) {

@@ -7,10 +7,10 @@ CFLAGS = -std=c++11 -I$(VULKAN_SDK_PATH)/include $(INCLUDES) -Wall -g
 LDFLAGS = -L$(VULKAN_SDK_PATH)/lib -lvulkan -lxcb
 
 EXECUTABLE=turbulence
-OBJ=main.o VulkanGraphics.o
+OBJ=main.o VulkanGraphics.o Engine.o
 
 # FIXME: not sure wtf .. but i seem to need this extra obj list
-OO=main.o VulkanGraphics.o
+OO=main.o VulkanGraphics.o Engine.o
 
 turbulence: ${OBJ}
 	$(CC) $(CFLAGS) $(OO) -o $@ $(OBJS) $(LDFLAGS)

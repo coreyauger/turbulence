@@ -228,6 +228,7 @@ void trb::grfx::VulkanGraphics::initxcbConnection()
 
 void trb::grfx::VulkanGraphics::renderLoop()
 {
+	std::cout<< "VulkanGraphics::renderLoop" << std::endl;
 	/*if (benchmark.active) {
 		benchmark.run([=] { render(); }, vulkanDevice->properties);
 		vkDeviceWaitIdle(device);

@@ -74,7 +74,8 @@ namespace trb{
                 const std::string getWindowTitle() const {
                     // TODO ..
                     return std::string("Engine Turbulence");
-                }                
+                } 
+                void renderLoop();               
 
             protected:
                   // Frame counter to display fps
@@ -136,8 +137,7 @@ namespace trb{
                 void createInstance();
                 bool checkValidationLayerSupport();                
                 std::vector<const char*> getRequiredExtensions();
-                void setupDebugCallback();                
-                void renderLoop();
+                void setupDebugCallback();                               
                 void updateOverlay();
 
                 // Pure virtual render function (override in derived class)

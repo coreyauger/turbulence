@@ -20,6 +20,8 @@ namespace trb{
             {};
             ~Engine(){};
 
+            void gameLoop();
+
         private:
             grfx::GraphicsManager graphics;
 

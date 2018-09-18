@@ -5,7 +5,8 @@
 int main(){
     trb::Engine turbulance;
 
-    // turbulance
+    turbulance.gameLoop();
+    
 
     return 0;
 }
