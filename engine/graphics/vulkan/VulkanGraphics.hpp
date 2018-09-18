@@ -36,6 +36,7 @@
 #include "VulkanDevice.hpp"
 #include "VulkanSwapChain.hpp"
 #include "../GraphicsInterface.hpp"
+#include "../Camera.hpp"
 
 namespace trb{
     namespace grfx{
@@ -45,6 +46,14 @@ namespace trb{
                 bool prepared = false;
                 uint32_t width = 1280;
                 uint32_t height = 720;
+                /** @brief Last frame time measured using a high performance timer (if available) */
+	            float frameTimer = 1.0f;
+                // Defines a frame rate independent timer value clamped from -1.0...1.0
+                // For use in animations, rotations, etc.
+                float timer = 0.0f;
+                // Multiplier for speeding up (or slowing down) the global timer
+                float timerSpeed = 0.25f;
+
                 /** @brief Example settings that can be changed e.g. by command line arguments */
                 struct Settings {
                     /** @brief Activates validation layers (and message output) when set to true */
@@ -65,20 +74,19 @@ namespace trb{
                 const std::string getWindowTitle() const {
                     // TODO ..
                     return std::string("Engine Turbulence");
-                }
+                }                
 
-                static VulkanGraphics* create(bool enableValidationLayers){
-                    VulkanGraphics *graphics = new VulkanGraphics(enableValidationLayers);
-                    graphics->init();
-                    return graphics;
-                }
+            protected:
+                  // Frame counter to display fps
+	            uint32_t frameCounter = 0;
+	            uint32_t lastFPS = 0;
+                Camera camera;
 
-                 
-
-            private:
                 // Destination dimensions for resizing the window
+                float fpsTimer = 0.0f;  // fps timer (one second interval)	            
                 uint32_t destWidth;
                 uint32_t destHeight;
+                bool viewUpdated = false;
                 bool resizing = false;
                 bool paused = false;
                 std::string title = "Engine Turbulence";
@@ -128,7 +136,28 @@ namespace trb{
                 void createInstance();
                 bool checkValidationLayerSupport();                
                 std::vector<const char*> getRequiredExtensions();
-                void setupDebugCallback();
+                void setupDebugCallback();                
+                void renderLoop();
+                void updateOverlay();
+
+                // Pure virtual render function (override in derived class)
+                virtual void render() = 0;
+                // Called when view change occurs
+                // Can be overriden in derived class to e.g. update uniform buffers 
+                // Containing view dependant matrices
+                virtual void viewChanged() {};
+                /** @brief (Virtual) Called after a key was pressed, can be used to do custom key handling */
+                virtual void keyPressed(uint32_t) {};
+                /** @brief (Virtual) Called after th mouse cursor moved and before internal events (like camera rotation) is handled */
+                virtual void mouseMoved(double x, double y, bool &handled) {};
+                // Called when the window has been resized
+                // Can be overriden in derived class to recreate or rebuild resources attached to the frame buffer / swapchain
+                virtual void windowResized() {};
+                // Pure virtual function to be overriden by the dervice class
+                // Called in case of an event where e.g. the framebuffer has to be rebuild and thus
+                // all command buffers that may reference this
+                virtual void buildCommandBuffers() {};
+
 
 #if defined(VK_USE_PLATFORM_XCB_KHR)
                 bool quit = false;

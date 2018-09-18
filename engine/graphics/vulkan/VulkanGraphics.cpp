@@ -1,4 +1,5 @@
 #include "VulkanGraphics.hpp"
+#include <chrono>
 
 #include "../../LogManager.hpp"
 
@@ -225,16 +226,16 @@ void trb::grfx::VulkanGraphics::initxcbConnection()
 
 
 
-void VulkanExampleBase::renderLoop()
+void trb::grfx::VulkanGraphics::renderLoop()
 {
-	if (benchmark.active) {
+	/*if (benchmark.active) {
 		benchmark.run([=] { render(); }, vulkanDevice->properties);
 		vkDeviceWaitIdle(device);
 		if (benchmark.filename != "") {
 			benchmark.saveResults();
 		}
 		return;
-	}
+	}*/
 
 	destWidth = width;
 	destHeight = height;
@@ -499,11 +500,11 @@ void VulkanExampleBase::renderLoop()
 			fpsTimer = 0.0f;
 			frameCounter = 0;
 		}
-		updateOverlay();
+		//updateOverlay();
 	}
 #endif
 	// Flush device to make sure all resources can be freed 
-	vkDeviceWaitIdle(device);
+	vulkanDevice.device.waitIdle();	
 }
 
 
@@ -620,6 +621,54 @@ void trb::grfx::VulkanGraphics::handleEvent(const xcb_generic_event_t *event)
 	}
     */
 }
+
+void trb::grfx::VulkanGraphics::updateOverlay()
+{
+	/*if (!settings.overlay)
+		return;
+
+	ImGuiIO& io = ImGui::GetIO();
+
+	io.DisplaySize = ImVec2((float)width, (float)height);
+	io.DeltaTime = frameTimer;
+
+	io.MousePos = ImVec2(mousePos.x, mousePos.y);
+	io.MouseDown[0] = mouseButtons.left;
+	io.MouseDown[1] = mouseButtons.right;
+
+	ImGui::NewFrame();
+
+	ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0);
+	ImGui::SetNextWindowPos(ImVec2(10, 10));
+	ImGui::SetNextWindowSize(ImVec2(0, 0), ImGuiSetCond_FirstUseEver);
+	ImGui::Begin("Vulkan Example", nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove);
+	ImGui::TextUnformatted(title.c_str());
+	ImGui::TextUnformatted(deviceProperties.deviceName);
+	ImGui::Text("%.2f ms/frame (%.1d fps)", (1000.0f / lastFPS), lastFPS);
+
+#if defined(VK_USE_PLATFORM_ANDROID_KHR)
+	ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0.0f, 5.0f * UIOverlay->scale));
+#endif
+	ImGui::PushItemWidth(110.0f * UIOverlay->scale);
+	OnUpdateUIOverlay(UIOverlay);
+	ImGui::PopItemWidth();
+#if defined(VK_USE_PLATFORM_ANDROID_KHR)
+	ImGui::PopStyleVar();
+#endif
+
+	ImGui::End();
+	ImGui::PopStyleVar();
+	ImGui::Render();
+
+	UIOverlay->update();
+
+#if defined(VK_USE_PLATFORM_ANDROID_KHR)
+	if (mouseButtons.left) {
+		mouseButtons.left = false;
+	}
+#endif*/
+}
+
 
 #endif
 
